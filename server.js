@@ -1,9 +1,9 @@
 const express = require("express");
 const path = require("path");
 require("graphql");
+const { ApolloServer } = require("apollo-server-express");
 
 // const { buildSchema } = require("graphql");
-const { graphqlHTTP } = require("express-graphql");
 const { makeExecutableSchema } = require("@graphql-tools/schema");
 
 // will read any files matching our patterns and pass the text the file contained
@@ -18,74 +18,28 @@ const typesArray = loadFilesSync("**/*", {
 
 const resolversArray = loadFilesSync(path.join(__dirname, "**/*.resolvers.js"));
 
-const schema = makeExecutableSchema({
-  typeDefs: typesArray,
-  resolvers: resolversArray,
-  //   resolvers: {
-  //     Query: {
-  //       // parent is the root of the data, args is helpful to filter, context is usefull for data shared accross all resolvers, info contains info about current state of operation
-  //       products: async (parent, args, context, info) => {
-  //         console.log(" getting the products...");
-  //         // with promise or async function, resolver will wait promise to resolve before sending back data
-  //         const products = await Promise.parent.products;
-  //         return products;
-  //       },
-  //       orders: (parent, args, context, info) => {
-  //         console.log(" getting the orders...");
-  //         return parent.orders;
-  //       },
-  //     },
-  //   },
-});
+async function startApolloServer() {
+  const app = express();
 
-// String! : require
-// const schema = buildSchema(`
-//     type Query {
-//        products: [Product]
-//        orders: [Order]
-//     }
+  const schema = makeExecutableSchema({
+    typeDefs: typesArray,
+    resolvers: resolversArray,
+  });
 
-//     type Product {
-//         id: ID!
-//         description: String!
-//         reviews: [Review]
-//         price: Float!
+  // apolloserver contains middleware and logic to handle graphQL requests
+  // const schema defines how our server will respond to request
+  const server = new ApolloServer({
+    schema,
+  });
+  // getting apollo ready for requests
+  await server.start();
+  // connect apollo middleware with server
+  // app as argument here is telling which express app to connect to
+  server.applyMiddleware({ app, path: "/graphql" });
 
-//     }
+  app.listen(3000, () => {
+    console.log("Running graphQl server.");
+  });
+}
 
-//     type Review {
-//         rating: Int!
-//         comment: String
-//     }
-
-//     type Order {
-//         date: String!
-//         subtotal: Float!
-//         items: [OrderItem]
-//     }
-
-//     type OrderItem {
-//         product: Product!
-//         quantity: Int!
-//     }
-// `);
-
-// const root = {
-//   products: require("./products/products.models"),
-//   orders: require("./orders/orders.models"),
-// };
-const app = express();
-
-// graphiql is in the graphqlhttp package. by setting it to true, it is enable and accessible via localhost:3000/graphql
-app.use(
-  "/graphql",
-  graphqlHTTP({
-    schema: schema,
-    // rootValue: root,
-    graphiql: true,
-  })
-);
-
-app.listen(3000, () => {
-  console.log("Running graphQl server.");
-});
+startApolloServer();
